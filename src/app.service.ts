@@ -1,22 +1,75 @@
-import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+// Backend Node.js + Express para stats estilo OP.GG
+// Requiere API Key de Riot Games
 
-@Injectable()
-export class AppService {
-  constructor(private readonly httpService: HttpService){}
-  //Hacer peticiones que haría a riot
-  getTest(): string {
-    const username = 'Peereira7'
-    const tag = 'CASTR'
-    this.getpuuid(username, tag);
-    return 'Hello World!';
-  }
-  //El return del test me tiene que devolver la información de las últimas 5 partidas
-  //
-  getpuuid(username, tag) {
-    const puuid = this.httpService.get('https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/Peereira7/CASTR?api_key=RGAPI-5a311481-5c37-46e4-8d19-25d145a6e873');
-    console.log(puuid);
-    return puuid;
-  }
+import express from 'express';
+import fetch from 'node-fetch';
+import cors from 'cors';
 
+
+const app = express();
+app.use(cors());
+
+const RIOT_API_KEY = "RGAPI-a3dd8dbd-477b-43f7-aa61-d310bb8aaa10" // <-- pon aquí tu API KEY
+const REGION = 'euw1';
+const ROUTING = 'europe';
+const SUMMONER_NAME = 'Peereira7';
+const TAGLINE = 'CASTR';
+
+// Helper Riot request
+async function riotFetch(url) {
+  const res = await fetch(url, {
+    headers: { 'X-Riot-Token': RIOT_API_KEY }
+  });
+  if (!res.ok) throw new Error('Riot API error');
+  return res.json();
 }
+
+// Obtener PUUID
+app.get('/api/summoner', async (req, res) => {
+  try {
+    const data = await riotFetch(
+      `https://${ROUTING}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${SUMMONER_NAME}/${TAGLINE}`
+    );
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Rank actual
+app.get('/api/rank/:summonerId', async (req, res) => {
+  try {
+    const data = await riotFetch(
+      `https://${REGION}.api.riotgames.com/lol/league/v4/entries/by-summoner/${req.params.summonerId}`
+    );
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Partidas recientes
+app.get('/api/matches/:puuid', async (req, res) => {
+  try {
+    const matches = await riotFetch(
+      `https://${ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${req.params.puuid}/ids?count=20`
+    );
+    res.json(matches);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Stats de una partida
+app.get('/api/match/:matchId', async (req, res) => {
+  try {
+    const match = await riotFetch(
+      `https://${ROUTING}.api.riotgames.com/lol/match/v5/matches/${req.params.matchId}`
+    );
+    res.json(match);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(3001, () => console.log('Backend activo en http://localhost:3001'));
