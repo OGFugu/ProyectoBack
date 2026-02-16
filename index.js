@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ================= CONFIG =================
 const PORT = 3001;
-const RIOT_API_KEY = 'RGAPI-208dea2e-3577-4604-afad-61269e9074c0' // obligatoria
+const RIOT_API_KEY = 'RGAPI-eb3e9f3d-dcfa-46b3-89db-cc2ac5de5ed4' // obligatoria
 const REGION = 'euw1'
 const ROUTING = 'europe';
 

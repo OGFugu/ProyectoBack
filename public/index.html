@@ -23,6 +23,27 @@
     .champCell { text-align:left; }
     .champWrap { display:flex; align-items:center; gap:10px; justify-content:flex-start; }
     .champIcon { width:36px; height:36px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
+    .rankTier{
+    color:#a855f7; /* morado master */
+    font-weight:800;
+    font-size:18px;
+    }
+    .winrate{
+    margin-left:6px;
+    font-weight:600;
+    color:#94a3b8;
+}
+.winrate-good{
+  color:#22c55e; /* verde */
+  font-weight:700;
+}
+
+.winrate-bad{
+  color:#ef4444; /* rojo */
+  font-weight:700;
+}
+
+
   </style>
 </head>
 <body>
@@ -113,17 +134,33 @@
 
       const puuid = acc.puuid;
 
+      const rankEl = document.getElementById("rank");
       // 2) Rank por PUUID
-      const rankRes = await fetch(`${API}/rank/by-puuid/${puuid}`);
-      const rank = await rankRes.json();
-      if (!rankRes.ok || rank.error) throw new Error(rank.error || "Error en /api/rank/by-puuid");
+    const rankRes = await fetch(`${API}/rank/by-puuid/${puuid}`);
+    const rank = await rankRes.json();
+    if (!rankRes.ok || rank.error) throw new Error(rank.error || "Error en /api/rank/by-puuid");
 
-      const soloq = Array.isArray(rank) ? rank.find(r => r.queueType === "RANKED_SOLO_5x5") : null;
-      document.getElementById("rank").innerHTML = soloq
-        ? `<div style="font-size:18px;font-weight:700;">${soloq.tier} ${soloq.rank} · ${soloq.leaguePoints} LP</div>
-           <div class="muted small">${soloq.wins}W / ${soloq.losses}L</div>`
-        : `<span class="muted">Sin rank en SoloQ</span>`;
+    const soloq = rank.find(r => r.queueType === "RANKED_SOLO_5x5");
 
+    if (!soloq) {
+    rankEl.innerHTML = `<span class="muted">Sin rank en SoloQ</span>`;
+    return;
+    }
+
+    const total = soloq.wins + soloq.losses;
+    const wr = total ? Math.round((soloq.wins / total) * 100) : 0;
+
+    const wrClass = wr >= 50 ? "winrate-good" : "winrate-bad";
+
+    rankEl.innerHTML = `
+    <div class="rankTier">
+        ${soloq.tier} ${soloq.rank} · ${soloq.leaguePoints} LP
+    </div>
+    <div class="muted small">
+        ${soloq.wins}W / ${soloq.losses}L
+        <span class="${wrClass}">· WR ${wr}%</span>
+    </div>
+    `;
       // 3) Matches
       const matchesRes = await fetch(`${API}/matches/${puuid}`);
       const matchIds = await matchesRes.json();
