@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Peereira7-CASTR | Stats LoL</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0b1220; color:#e5e7eb; margin:0; }
+    header { background:#111827; padding:20px; }
+    h1 { margin:0; font-size: 42px; }
+    header p { margin: 8px 0 0; color:#9ca3af; }
+    .container { padding:20px; max-width: 1100px; margin: 0 auto; }
+    .card { background:#111827; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+    h2 { margin: 0 0 10px; }
+    .muted { color:#9ca3af; }
+    .error { background:#3f1d1d; border:1px solid #7f1d1d; color:#fecaca; padding:12px; border-radius:10px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:10px; border-bottom:1px solid #1f2937; text-align:center; }
+    th { color:#9ca3af; font-weight: 600; }
+    .win { color:#22c55e; font-weight: 700; }
+    .lose { color:#ef4444; font-weight: 700; }
+    .champCell { text-align:left; }
+    .champWrap { display:flex; align-items:center; gap:10px; justify-content:flex-start; }
+    .champIcon { width:36px; height:36px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Peereira7-CASTR</h1>
+  <p>EUW · SoloQ Stats (mini OP.GG)</p>
+</header>
+
+<div class="container">
+  <div id="status" class="card muted small">Cargando…</div>
+
+  <div class="card" id="rankCard">
+    <h2>Rank</h2>
+    <div id="rank" class="muted">Cargando…</div>
+  </div>
+
+  <div class="card">
+    <h2>Partidas recientes</h2>
+    <table id="matches">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th style="text-align:left;">Campeón</th>
+          <th>K / D / A</th>
+          <th>KDA</th>
+          <th>Resultado</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>KDA últimas partidas</h2>
+    <canvas id="kdaChart"></canvas>
+  </div>
+</div>
+
+<script>
+  // 👉 Importante: como lo abres desde http://localhost:3001
+  // usamos rutas relativas al backend:
+  const API = "/api";
+
+  // ===== DDRAGON (iconos) =====
+  let DDRAGON_VERSION = null;
+
+  async function getDdragonVersion() {
+    if (DDRAGON_VERSION) return DDRAGON_VERSION;
+    const versions = await fetch("https://ddragon.leagueoflegends.com/api/versions.json").then(r => r.json());
+    DDRAGON_VERSION = versions[0];
+    return DDRAGON_VERSION;
+  }
+
+  const CHAMPION_FILE_FIX = {
+    FiddleSticks: "Fiddlesticks",
+    MonkeyKing: "Wukong",
+    KhaZix: "Khazix",
+    ChoGath: "Chogath",
+    LeBlanc: "Leblanc",
+    KaiSa: "Kaisa",
+    VelKoz: "Velkoz",
+    BelVeth: "Belveth",
+  };
+
+  function championIconUrl(name) {
+    const file = CHAMPION_FILE_FIX[name] || name;
+    return `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${file}.png`;
+  }
+
+  function kdaValue(k, d, a) {
+    return (k + a) / Math.max(1, d);
+  }
+  function fmt(n) { return Number(n).toFixed(2); }
+
+  function showError(message) {
+    document.getElementById("status").innerHTML =
+      `<div class="error"><b>Error:</b> ${message}</div>`;
+  }
+
+  async function load() {
+    try {
+      await getDdragonVersion();
+
+      // 1) PUUID
+      const accRes = await fetch(`${API}/summoner`);
+      const acc = await accRes.json();
+      if (!accRes.ok || acc.error) throw new Error(acc.error || "Error en /api/summoner");
+
+      const puuid = acc.puuid;
+
+      // 2) Rank por PUUID
+      const rankRes = await fetch(`${API}/rank/by-puuid/${puuid}`);
+      const rank = await rankRes.json();
+      if (!rankRes.ok || rank.error) throw new Error(rank.error || "Error en /api/rank/by-puuid");
+
+      const soloq = Array.isArray(rank) ? rank.find(r => r.queueType === "RANKED_SOLO_5x5") : null;
+      document.getElementById("rank").innerHTML = soloq
+        ? `<div style="font-size:18px;font-weight:700;">${soloq.tier} ${soloq.rank} · ${soloq.leaguePoints} LP</div>
+           <div class="muted small">${soloq.wins}W / ${soloq.losses}L</div>`
+        : `<span class="muted">Sin rank en SoloQ</span>`;
+
+      // 3) Matches
+      const matchesRes = await fetch(`${API}/matches/${puuid}`);
+      const matchIds = await matchesRes.json();
+      if (!matchesRes.ok || matchIds.error) throw new Error(matchIds.error || "Error en /api/matches");
+
+      const tbody = document.querySelector("#matches tbody");
+      tbody.innerHTML = "";
+
+      const kdaSeries = [];
+
+      // 4) Detalles de las primeras 10
+      for (let i = 0; i < Math.min(10, matchIds.length); i++) {
+        const id = matchIds[i];
+        const matchRes = await fetch(`${API}/match/${id}`);
+        const match = await matchRes.json();
+        if (!matchRes.ok || match.error) continue;
+
+        const p = match.info.participants.find(x => x.puuid === puuid);
+        if (!p) continue;
+
+        const champ = p.championName || "Unknown";
+        const k = p.kills, d = p.deaths, a = p.assists;
+        const kda = kdaValue(k,d,a);
+        kdaSeries.push(kda);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="muted small">${i+1}</td>
+          <td class="champCell">
+            <div class="champWrap">
+              <img class="champIcon"
+                   src="${championIconUrl(champ)}"
+                   alt="${champ}"
+                   loading="lazy"
+                   onerror="this.style.display='none';" />
+              <span style="font-weight:700;">${champ}</span>
+            </div>
+          </td>
+          <td>${k}/${d}/${a}</td>
+          <td>${fmt(kda)}</td>
+          <td class="${p.win ? "win" : "lose"}">${p.win ? "Victoria" : "Derrota"}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById("status").textContent =
+        `Cargado: ${acc.gameName}#${acc.tagLine} · partidas: ${Math.min(10, matchIds.length)} · DDragon: ${DDRAGON_VERSION}`;
+
+      // Chart
+      new Chart(document.getElementById("kdaChart"), {
+        type: "line",
+        data: {
+          labels: kdaSeries.map((_, idx) => `Game ${idx+1}`),
+          datasets: [{ label: "KDA", data: kdaSeries }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      });
+
+    } catch (e) {
+      showError(e.message);
+      console.error(e);
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

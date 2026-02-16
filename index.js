@@ -1,14 +1,25 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import cors from 'cors';
+import path from "path";
+import { fileURLToPath } from "url";
 
+// 👇 primero crear __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 👇 luego crear app
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 👇 ahora sí puedes usar public
+app.use(express.static(path.join(__dirname, "public")));
+
+
 // ================= CONFIG =================
 const PORT = 3001;
-const RIOT_API_KEY = 'RGAPI-cc178d29-148f-468e-9c50-9c0311a7d179' // obligatoria
+const RIOT_API_KEY = 'RGAPI-208dea2e-3577-4604-afad-61269e9074c0' // obligatoria
 const REGION = 'euw1'
 const ROUTING = 'europe';
 
@@ -96,6 +107,37 @@ app.get('/api/match/:matchId', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// PERFIL COMPLETO (rank + matches + detalles)
+app.get("/api/profile", async (req, res) => {
+  try {
+    const count = Number(req.query.count || 10);
+
+    const account = await riotFetch(
+      `https://${ROUTING}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${RIOT_ID.gameName}/${RIOT_ID.tagLine}`
+    );
+
+    const puuid = account.puuid;
+
+    const rank = await riotFetch(
+      `https://${REGION}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}`
+    );
+
+    const matchIds = await riotFetch(
+      `https://${ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}`
+    );
+
+    const matchDetails = await Promise.all(
+      matchIds.map((id) =>
+        riotFetch(`https://${ROUTING}.api.riotgames.com/lol/match/v5/matches/${id}`)
+      )
+    );
+
+    res.json({ account, rank, matchIds, matchDetails });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ================= START =================
 app.listen(PORT, () => {
