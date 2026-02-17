@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Peereira7-CASTR | Stats LoL</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background:#0b1220; color:#e5e7eb; margin:0; }
     header { background:#111827; padding:20px; }
@@ -42,6 +41,47 @@
   color:#ef4444; /* rojo */
   font-weight:700;
 }
+.champList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.champRow{
+  display:grid;
+  grid-template-columns: 44px 1fr 120px 90px 90px;
+  gap:12px;
+  align-items:center;
+  padding:10px;
+  border-radius:12px;
+  background:#0f172a;
+  border:1px solid #1f2937;
+}
+
+.champRow .name{
+  font-weight:800;
+}
+
+.champRow .sub{
+  color:#9ca3af;
+  font-size:12px;
+  margin-top:2px;
+}
+
+.stat{
+  text-align:right;
+  font-weight:700;
+}
+
+.stat small{
+  display:block;
+  color:#94a3b8;
+  font-weight:600;
+  margin-top:2px;
+}
+
+.wrGood{ color:#22c55e; }
+.wrBad{ color:#ef4444; }
 
 
   </style>
@@ -59,7 +99,10 @@
     <h2>Rank</h2>
     <div id="rank" class="muted">Cargando…</div>
   </div>
-
+<div class="card">
+  <h2>Campeones</h2>
+  <div id="champList" class="champList"></div>
+</div>
   <div class="card">
     <h2>Partidas recientes</h2>
     <table id="matches">
@@ -75,12 +118,6 @@
       <tbody></tbody>
     </table>
   </div>
-
-  <div class="card">
-    <h2>KDA últimas partidas</h2>
-    <canvas id="kdaChart"></canvas>
-  </div>
-</div>
 
 <script>
   // 👉 Importante: como lo abres desde http://localhost:3001
@@ -168,8 +205,12 @@
 
       const tbody = document.querySelector("#matches tbody");
       tbody.innerHTML = "";
+      const champAgg = new Map(); 
+      // champ -> { games, wins, kills, deaths, assists }
 
-      const kdaSeries = [];
+
+      const champStats = new Map(); // champ -> { games, wins }
+
 
       // 4) Detalles de las primeras 10
       for (let i = 0; i < Math.min(10, matchIds.length); i++) {
@@ -180,11 +221,60 @@
 
         const p = match.info.participants.find(x => x.puuid === puuid);
         if (!p) continue;
+        // ===== Lista de campeones estilo OP.GG =====
+        const champListEl = document.getElementById("champList");
+
+        const champRows = [...champAgg.entries()]
+          .map(([name, s]) => {
+            const wr = s.games ? Math.round((s.wins / s.games) * 100) : 0;
+            const kda = (s.kills + s.assists) / Math.max(1, s.deaths);
+            return { name, games: s.games, wr, kda, s };
+          })
+          .sort((a, b) => b.games - a.games); // por partidas (estilo opgg)
+
+        champListEl.innerHTML = champRows.map(c => {
+          const wrClass = c.wr >= 50 ? "wrGood" : "wrBad";
+          return `
+            <div class="champRow">
+              <img class="champIcon" src="${championIconUrl(c.name)}" alt="${c.name}" onerror="this.style.display='none';">
+              <div>
+                <div class="name">${c.name}</div>
+                <div class="sub">${c.s.kills}/${c.s.deaths}/${c.s.assists} · ${c.games} partidas</div>
+              </div>
+
+              <div class="stat">
+                ${c.kda.toFixed(2)}:1 KDA
+                <small>${(c.s.kills/c.games).toFixed(1)} / ${(c.s.deaths/c.games).toFixed(1)} / ${(c.s.assists/c.games).toFixed(1)}</small>
+              </div>
+
+              <div class="stat ${wrClass}">
+                ${c.wr}%
+                <small>Win Rate</small>
+              </div>
+
+              <div class="stat">
+                ${c.games}
+                <small>Partidas</small>
+              </div>
+            </div>
+          `;
+        }).join("");
 
         const champ = p.championName || "Unknown";
         const k = p.kills, d = p.deaths, a = p.assists;
+        const s = champAgg.get(champ) || { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 };
+        s.games += 1;
+        s.wins += p.win ? 1 : 0;
+        s.kills += k;
+        s.deaths += d;
+        s.assists += a;
+        champAgg.set(champ, s);
         const kda = kdaValue(k,d,a);
-        kdaSeries.push(kda);
+        const current = champStats.get(champ) || { games: 0, wins: 0 };
+        current.games += 1;
+        current.wins += p.win ? 1 : 0;
+        champStats.set(champ, current);
+
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -209,15 +299,7 @@
       document.getElementById("status").textContent =
         `Cargado: ${acc.gameName}#${acc.tagLine} · partidas: ${Math.min(10, matchIds.length)} · DDragon: ${DDRAGON_VERSION}`;
 
-      // Chart
-      new Chart(document.getElementById("kdaChart"), {
-        type: "line",
-        data: {
-          labels: kdaSeries.map((_, idx) => `Game ${idx+1}`),
-          datasets: [{ label: "KDA", data: kdaSeries }]
-        },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
-      });
+
 
     } catch (e) {
       showError(e.message);
