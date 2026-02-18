@@ -82,6 +82,220 @@
 
 .wrGood{ color:#22c55e; }
 .wrBad{ color:#ef4444; }
+/* Botones para cambiar de página */
+.pagerBtn{
+  min-width:44px;
+  height:44px;
+  border:none;
+  border-radius:8px;
+  background:#374151;
+  color:#e5e7eb;
+  font-weight:800;
+  cursor:pointer;
+}
+.pagerBtn:hover{ filter:brightness(1.1); }
+.pagerBtn.active{
+  background:#7c3aed; /* morado */
+}
+.pagerBtn.ghost{
+  background:transparent;
+  border:1px solid #374151;
+  color:#9ca3af;
+  cursor:default;
+}
+.grid{
+  display:grid;
+  grid-template-columns: 1fr 320px;
+  gap:16px;
+  align-items:start;
+}
+
+@media (max-width: 1000px){
+  .grid{ grid-template-columns: 1fr; }
+}
+
+.side{
+  background:#111827;
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,.25);
+  border:1px solid #1f2937;
+}
+
+.sideHeader{
+  padding:14px 16px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-size:12px;
+  color:#cbd5e1;
+  background: linear-gradient(90deg, rgba(124,58,237,.35), rgba(17,24,39,0));
+  border-bottom:1px solid #1f2937;
+}
+
+.sideList{
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.sideRow{
+  display:grid;
+  grid-template-columns: 44px 1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:10px;
+  border-radius:12px;
+  background:#0f172a;
+  border:1px solid #1f2937;
+}
+
+.sideRow .name{
+  font-weight:900;
+  font-size:14px;
+  margin-bottom:4px;
+}
+
+.sideRow .kda{
+  color:#9ca3af;
+  font-weight:700;
+  font-size:12px;
+}
+
+.sideRight{
+  text-align:right;
+  min-width:90px;
+}
+
+.sideRight .wr{
+  font-weight:900;
+  font-size:14px;
+}
+
+.sideRight .wl{
+  color:#9ca3af;
+  font-weight:700;
+  font-size:12px;
+  margin-top:4px;
+}
+
+.sideMore{
+  width:100%;
+  border:none;
+  padding:12px 0;
+  background:#0b1220;
+  color:#e5e7eb;
+  font-weight:900;
+  cursor:pointer;
+  border-top:1px solid #1f2937;
+}
+.sideMore:hover{ filter:brightness(1.1); }
+/* ===== Profile Header (OP.GG style) ===== */
+.profileHeader{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:18px;
+  border-radius:16px;
+  background: linear-gradient(180deg, rgba(17,24,39,0.9), rgba(15,23,42,0.95));
+  border:1px solid #1f2937;
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+  margin-bottom:16px;
+}
+
+.profileIcon{
+  width:86px;
+  height:86px;
+  border-radius:18px;
+  overflow:hidden;
+  background:#0f172a;
+  border:1px solid #1f2937;
+  box-shadow: 0 8px 20px rgba(0,0,0,.35);
+  flex:0 0 auto;
+}
+.profileIcon img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.profileMain{
+  flex:1;
+  min-width:0;
+}
+
+.profileNameRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.profileName{
+  font-size:34px;
+  font-weight:900;
+  margin:0;
+  line-height:1.05;
+}
+
+.profileTag{
+  padding:6px 10px;
+  border-radius:10px;
+  background:#0f172a;
+  border:1px solid #1f2937;
+  color:#cbd5e1;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+
+.profileMeta{
+  margin-top:8px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  color:#94a3b8;
+  font-weight:700;
+  font-size:12px;
+}
+.dot{
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background:#7c3aed;
+  display:inline-block;
+}
+
+.profileActions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.btnPrimary{
+  border:none;
+  background:#7c3aed;
+  color:white;
+  font-weight:900;
+  padding:10px 14px;
+  border-radius:12px;
+  cursor:pointer;
+  box-shadow: 0 10px 20px rgba(124,58,237,.25);
+}
+.btnPrimary:hover{ filter:brightness(1.08); }
+
+.btnGhost{
+  border:1px solid #374151;
+  background:transparent;
+  color:#cbd5e1;
+  font-weight:900;
+  padding:10px 14px;
+  border-radius:12px;
+  cursor:pointer;
+}
+.btnGhost:hover{ filter:brightness(1.08); }
 
 
   </style>
@@ -93,18 +307,37 @@
 </header>
 
 <div class="container">
-  <div id="status" class="card muted small">Cargando…</div>
+  <div class="profileHeader">
+  <div class="profileIcon">
+    <img id="profileIconImg" src="" alt="Profile Icon" />
+  </div>
+
+  <div class="profileMain">
+    <div class="profileNameRow">
+      <h2 id="profileName" class="profileName">Cargando...</h2>
+      <span id="profileTag" class="profileTag">#...</span>
+    </div>
+    <div class="profileMeta">
+      <span class="dot"></span>
+      <span id="lastSyncText">LAST SYNC: —</span>
+    </div>
+  </div>
+
+  <div class="profileActions">
+    <button id="syncBtn" class="btnPrimary">UPDATE PROFILE</button>
+  </div>
+</div>
+
 
   <div class="card" id="rankCard">
     <h2>Rank</h2>
     <div id="rank" class="muted">Cargando…</div>
-  </div>
-<div class="card">
-  <h2>Campeones</h2>
-  <div id="champList" class="champList"></div>
 </div>
-  <div class="card">
+
+<div class="grid">
+  <div class="card" id="matchesCard">
     <h2>Partidas recientes</h2>
+
     <table id="matches">
       <thead>
         <tr>
@@ -117,7 +350,16 @@
       </thead>
       <tbody></tbody>
     </table>
+    
+    <div id="pagination" style="display:flex;gap:8px;justify-content:center;margin-top:14px;"></div>
   </div>
+
+  <div class="side">
+    <div class="sideHeader">⭐ CHAMPIONS PLAYED</div>
+    <div id="champSideList" class="sideList"></div>
+    <button id="champShowMore" class="sideMore">Show more</button>
+  </div>
+</div>
 
 <script>
   // 👉 Importante: como lo abres desde http://localhost:3001
@@ -156,9 +398,154 @@
   function fmt(n) { return Number(n).toFixed(2); }
 
   function showError(message) {
-    document.getElementById("status").innerHTML =
-      `<div class="error"><b>Error:</b> ${message}</div>`;
+  console.error(message);
+  alert(message);
+}
+
+
+  let currentPage = 1;
+  const pageSize = 5;
+
+  function renderPagination(totalPages) {
+    const el = document.getElementById("pagination");
+    if (!el) return;
+
+    const buttons = [];
+
+    const addBtn = (label, page, active=false, disabled=false, ghost=false) => {
+      const cls = `pagerBtn ${active ? "active" : ""} ${ghost ? "ghost" : ""}`.trim();
+      buttons.push({ label, page, cls, disabled });
+    };
+
+    // lógica tipo "1 2 3 ... last"
+    if (totalPages <= 6) {
+      for (let p = 1; p <= totalPages; p++) addBtn(String(p), p, p === currentPage);
+    } else {
+      addBtn("1", 1, currentPage === 1);
+      addBtn("2", 2, currentPage === 2);
+      addBtn("3", 3, currentPage === 3);
+
+      if (currentPage > 4 && currentPage < totalPages - 2) {
+        addBtn("…", null, false, true, true);
+        addBtn(String(currentPage), currentPage, true);
+        addBtn("…", null, false, true, true);
+      } else {
+        addBtn("…", null, false, true, true);
+      }
+
+      addBtn(String(totalPages), totalPages, currentPage === totalPages);
+    }
+
+    el.innerHTML = buttons.map(b => {
+      if (b.disabled) return `<button class="${b.cls}" disabled>${b.label}</button>`;
+      return `<button class="${b.cls}" data-page="${b.page}">${b.label}</button>`;
+    }).join("");
+
+    el.querySelectorAll("button[data-page]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        currentPage = Number(btn.dataset.page);
+        await loadMatchesFromDb(currentPage);
+      });
+    });
   }
+
+  async function loadMatchesFromDb(page=1) {
+    const res = await fetch(`${API}/db/matches/paged?page=${page}&pageSize=${pageSize}&days=5`);
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "Error cargando partidas de BD");
+
+    const tbody = document.querySelector("#matches tbody");
+    tbody.innerHTML = "";
+
+    data.rows.forEach((m, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="muted small">${(page-1)*pageSize + idx + 1}</td>
+        <td class="champCell">
+          <div class="champWrap">
+            <img class="champIcon" src="${championIconUrl(m.championName)}" alt="${m.championName}" onerror="this.style.display='none';" />
+            <span style="font-weight:700;">${m.championName}</span>
+          </div>
+        </td>
+        <td>${m.kills}/${m.deaths}/${m.assists}</td>
+        <td>${fmt(kdaValue(m.kills, m.deaths, m.assists))}</td>
+        <td class="${m.win ? "win" : "lose"}">${m.win ? "Victoria" : "Derrota"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    renderPagination(data.totalPages);
+  }
+ let champSideLimit = 5;
+
+async function loadChampionsSide() {
+  const res = await fetch(`${API}/db/champions?days=5&limit=${champSideLimit}`);
+  const champs = await res.json();
+  if (!res.ok || champs.error) throw new Error(champs.error || "Error cargando campeones (DB)");
+
+  const el = document.getElementById("champSideList");
+  if (!el) return;
+
+  if (!champs.length) {
+    el.innerHTML = `<div class="muted" style="padding:10px;">Sin datos. Ejecuta /api/sync</div>`;
+    return;
+  }
+
+  el.innerHTML = champs.map(c => {
+    const wrClass = c.wr >= 50 ? "wrGood" : "wrBad";
+    return `
+      <div class="sideRow">
+        <img class="champIcon" src="${championIconUrl(c.championName)}" alt="${c.championName}" onerror="this.style.display='none';">
+        <div>
+          <div class="name">${c.championName}</div>
+          <div class="kda">${c.kda}:1 KDA</div>
+        </div>
+        <div class="sideRight">
+          <div class="wr ${wrClass}">${c.wr}%</div>
+          <div class="wl">${c.wins}W - ${c.losses}L</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+
+document.addEventListener("click", async (e) => {
+  if (e.target && e.target.id === "champShowMore") {
+    champSideLimit = Math.min(20, champSideLimit + 5);
+    await loadChampionsSide();
+  }
+});
+
+  function timeAgo(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0) return `${d} day${d>1?"s":""} ago`;
+  if (h > 0) return `${h} hour${h>1?"s":""} ago`;
+  if (m > 0) return `${m} minute${m>1?"s":""} ago`;
+  return `just now`;
+}
+
+// ✅ ESTA FUNCIÓN VA AQUÍ: FUERA, DEBAJO DE timeAgo()
+async function loadLastSync() {
+  const res = await fetch(`${API}/db/last-sync`);
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || "Error cargando last sync");
+
+  const el = document.getElementById("lastSyncText");
+  if (!el) return;
+
+  if (!data.lastSync) {
+    el.textContent = "LAST SYNC: —";
+    return;
+  }
+
+  const diff = Date.now() - data.lastSync;
+  el.textContent = `LAST SYNC: ${timeAgo(diff)}`;
+}
+
 
   async function load() {
     try {
@@ -167,6 +554,28 @@
       // 1) PUUID
       const accRes = await fetch(`${API}/summoner`);
       const acc = await accRes.json();
+      console.log("ACC:", acc);
+      console.log("DDRAGON_VERSION:", DDRAGON_VERSION);
+
+      const img = document.getElementById("profileIconImg");
+      console.log("IMG TAG:", img);
+
+      const iconId = acc.profileIconId;
+      console.log("profileIconId:", iconId);
+
+      img.src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/profileicon/${iconId}.png`;
+      img.onerror = () => console.log("❌ Icon 404:", img.src);
+
+      // ===== Profile Header data =====
+      document.getElementById("profileName").textContent = acc.gameName;
+      document.getElementById("profileTag").textContent = `#${acc.tagLine}`;
+
+      // Icono “bonito” (como no tenemos el icono real de summoner, usamos un fallback)
+      // Puedes cambiar esta URL por una imagen tuya si quieres
+      const iconUrl = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/profileicon/${acc.profileIconId}.png`;
+      document.getElementById("profileIconImg").src = 
+        `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/profileicon/1.png`;
+
       if (!accRes.ok || acc.error) throw new Error(acc.error || "Error en /api/summoner");
 
       const puuid = acc.puuid;
@@ -198,107 +607,11 @@
         <span class="${wrClass}">· WR ${wr}%</span>
     </div>
     `;
-      // 3) Matches
-      const matchesRes = await fetch(`${API}/matches/${puuid}`);
-      const matchIds = await matchesRes.json();
-      if (!matchesRes.ok || matchIds.error) throw new Error(matchIds.error || "Error en /api/matches");
-
-      const tbody = document.querySelector("#matches tbody");
-      tbody.innerHTML = "";
-      const champAgg = new Map(); 
-      // champ -> { games, wins, kills, deaths, assists }
-
-
-      const champStats = new Map(); // champ -> { games, wins }
-
-
-      // 4) Detalles de las primeras 10
-      for (let i = 0; i < Math.min(10, matchIds.length); i++) {
-        const id = matchIds[i];
-        const matchRes = await fetch(`${API}/match/${id}`);
-        const match = await matchRes.json();
-        if (!matchRes.ok || match.error) continue;
-
-        const p = match.info.participants.find(x => x.puuid === puuid);
-        if (!p) continue;
-        // ===== Lista de campeones estilo OP.GG =====
-        const champListEl = document.getElementById("champList");
-
-        const champRows = [...champAgg.entries()]
-          .map(([name, s]) => {
-            const wr = s.games ? Math.round((s.wins / s.games) * 100) : 0;
-            const kda = (s.kills + s.assists) / Math.max(1, s.deaths);
-            return { name, games: s.games, wr, kda, s };
-          })
-          .sort((a, b) => b.games - a.games); // por partidas (estilo opgg)
-
-        champListEl.innerHTML = champRows.map(c => {
-          const wrClass = c.wr >= 50 ? "wrGood" : "wrBad";
-          return `
-            <div class="champRow">
-              <img class="champIcon" src="${championIconUrl(c.name)}" alt="${c.name}" onerror="this.style.display='none';">
-              <div>
-                <div class="name">${c.name}</div>
-                <div class="sub">${c.s.kills}/${c.s.deaths}/${c.s.assists} · ${c.games} partidas</div>
-              </div>
-
-              <div class="stat">
-                ${c.kda.toFixed(2)}:1 KDA
-                <small>${(c.s.kills/c.games).toFixed(1)} / ${(c.s.deaths/c.games).toFixed(1)} / ${(c.s.assists/c.games).toFixed(1)}</small>
-              </div>
-
-              <div class="stat ${wrClass}">
-                ${c.wr}%
-                <small>Win Rate</small>
-              </div>
-
-              <div class="stat">
-                ${c.games}
-                <small>Partidas</small>
-              </div>
-            </div>
-          `;
-        }).join("");
-
-        const champ = p.championName || "Unknown";
-        const k = p.kills, d = p.deaths, a = p.assists;
-        const s = champAgg.get(champ) || { games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 };
-        s.games += 1;
-        s.wins += p.win ? 1 : 0;
-        s.kills += k;
-        s.deaths += d;
-        s.assists += a;
-        champAgg.set(champ, s);
-        const kda = kdaValue(k,d,a);
-        const current = champStats.get(champ) || { games: 0, wins: 0 };
-        current.games += 1;
-        current.wins += p.win ? 1 : 0;
-        champStats.set(champ, current);
-
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="muted small">${i+1}</td>
-          <td class="champCell">
-            <div class="champWrap">
-              <img class="champIcon"
-                   src="${championIconUrl(champ)}"
-                   alt="${champ}"
-                   loading="lazy"
-                   onerror="this.style.display='none';" />
-              <span style="font-weight:700;">${champ}</span>
-            </div>
-          </td>
-          <td>${k}/${d}/${a}</td>
-          <td>${fmt(kda)}</td>
-          <td class="${p.win ? "win" : "lose"}">${p.win ? "Victoria" : "Derrota"}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-
-      document.getElementById("status").textContent =
-        `Cargado: ${acc.gameName}#${acc.tagLine} · partidas: ${Math.min(10, matchIds.length)} · DDragon: ${DDRAGON_VERSION}`;
-
+      // 3) Matches desde BASE DE DATOS (con paginación)
+      await loadMatchesFromDb(1);
+      await loadChampionsSide();
+    // LAST SYNC (simple: usamos "ahora" cuando carga bien)
+      await loadLastSync();
 
 
     } catch (e) {
@@ -306,6 +619,26 @@
       console.error(e);
     }
   }
+
+document.getElementById("syncBtn").addEventListener("click", async () => {
+  try {
+    document.getElementById("lastSyncText").textContent = "LAST SYNC: syncing...";
+    const r = await fetch(`${API}/sync`);
+    const j = await r.json();
+    if (!r.ok || j.error) throw new Error(j.error || "Sync failed");
+
+    // recargar datos
+    currentPage = 1;
+    await loadMatchesFromDb(1);
+    await loadChampionsSide();
+    await loadLastSync();
+
+
+  } catch (e) {
+    document.getElementById("lastSyncText").textContent = "LAST SYNC: error";
+    showError(e.message);
+  }
+});
 
   load();
 </script>
