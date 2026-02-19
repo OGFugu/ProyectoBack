@@ -357,7 +357,6 @@
   <div class="side">
     <div class="sideHeader">⭐ CHAMPIONS PLAYED</div>
     <div id="champSideList" class="sideList"></div>
-    <button id="champShowMore" class="sideMore">Show more</button>
   </div>
 </div>
 
@@ -450,7 +449,18 @@
   }
 
   async function loadMatchesFromDb(page=1) {
-    const res = await fetch(`${API}/db/matches/paged?page=${page}&pageSize=${pageSize}&days=5`);
+  const url = `${API}/db/matches/paged?page=${page}&pageSize=${pageSize}`;
+  console.log("FETCH:", url);
+
+  const res = await fetch(url);
+
+  // 👇 si NO es JSON, imprime el HTML para ver qué es
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    const txt = await res.text();
+    console.log("NO JSON RESPONSE:", txt.slice(0, 200));
+    throw new Error("El servidor devolvió HTML en vez de JSON (mira la consola).");
+  }
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Error cargando partidas de BD");
 
@@ -476,10 +486,10 @@
 
     renderPagination(data.totalPages);
   }
- let champSideLimit = 5;
+let champSideLimit = 5;
 
 async function loadChampionsSide() {
-  const res = await fetch(`${API}/db/champions?days=5&limit=${champSideLimit}`);
+  const res = await fetch(`${API}/db/champions?last=50&limit=${champSideLimit}`);
   const champs = await res.json();
   if (!res.ok || champs.error) throw new Error(champs.error || "Error cargando campeones (DB)");
 
@@ -508,6 +518,8 @@ async function loadChampionsSide() {
     `;
   }).join("");
 }
+
+
 
 
 document.addEventListener("click", async (e) => {
@@ -572,9 +584,6 @@ async function loadLastSync() {
 
       // Icono “bonito” (como no tenemos el icono real de summoner, usamos un fallback)
       // Puedes cambiar esta URL por una imagen tuya si quieres
-      const iconUrl = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/profileicon/${acc.profileIconId}.png`;
-      document.getElementById("profileIconImg").src = 
-        `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/profileicon/1.png`;
 
       if (!accRes.ok || acc.error) throw new Error(acc.error || "Error en /api/summoner");
 
@@ -623,22 +632,30 @@ async function loadLastSync() {
 document.getElementById("syncBtn").addEventListener("click", async () => {
   try {
     document.getElementById("lastSyncText").textContent = "LAST SYNC: syncing...";
+
     const r = await fetch(`${API}/sync`);
+
+    const contentType = r.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const txt = await r.text();
+      console.log("SYNC NO JSON:", txt.slice(0, 300));
+      throw new Error("SYNC devolvió HTML en vez de JSON (mira la consola).");
+    }
+
     const j = await r.json();
     if (!r.ok || j.error) throw new Error(j.error || "Sync failed");
 
-    // recargar datos
     currentPage = 1;
     await loadMatchesFromDb(1);
     await loadChampionsSide();
     await loadLastSync();
-
 
   } catch (e) {
     document.getElementById("lastSyncText").textContent = "LAST SYNC: error";
     showError(e.message);
   }
 });
+
 
   load();
 </script>

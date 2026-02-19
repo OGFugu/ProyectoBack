@@ -26,7 +26,6 @@ app.use(express.static(path.join(__dirname, "public")));
 // ================= CONFIG =================
 const PORT = 3001;
 const RIOT_API_KEY = process.env.RIOT_API_KEY;
-console.log("API KEY:", RIOT_API_KEY);
 const REGION = 'euw1'
 const ROUTING = 'europe';
 
@@ -114,13 +113,16 @@ async function riotFetch(url) {
     headers: { 'X-Riot-Token': RIOT_API_KEY }
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text);
-  }
+  const text = await res.text();
 
-  return res.json();
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.error("RIOT NO JSON:", text);
+    throw new Error("Riot devolvió algo no válido (API key caducada?)");
+  }
 }
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function riotFetchWithRetry(url, retries = 3) {
@@ -249,25 +251,25 @@ app.get("/api/profile", async (req, res) => {
 // ===== SINCRONIZAR PARTIDAS ÚLTIMOS 5 DÍAS =====
 app.get("/api/sync", async (req, res) => {
   try {
-    const days = 5;
+    const MAX_MATCHES = 50;
 
     const account = await riotFetch(
       `https://${ROUTING}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${RIOT_ID.gameName}/${RIOT_ID.tagLine}`
     );
+
     const puuid = account.puuid;
 
-    const startTime = Math.floor((Date.now() - days * 24 * 60 * 60 * 1000) / 1000);
-
-    const matchIds = await riotFetch(
-      `https://${ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?startTime=${startTime}&count=30`
+    // ✅ Solo 1 llamada: últimas 50 partidas
+    const matchIds = await riotFetchWithRetry(
+      `https://${ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=${MAX_MATCHES}`
     );
 
     let saved = 0;
+
     for (const id of matchIds) {
-      // evitar pedir si ya existe
-      const exists = db.prepare(
-        "SELECT 1 FROM matches WHERE matchId = ? AND puuid = ?"
-      ).get(id, puuid);
+      const exists = db
+        .prepare("SELECT 1 FROM matches WHERE matchId = ? AND puuid = ?")
+        .get(id, puuid);
 
       if (exists) continue;
 
@@ -278,15 +280,23 @@ app.get("/api/sync", async (req, res) => {
       saveMatchToDb({ matchId: id, puuid, matchJson: match });
       saved++;
 
-      await sleep(350); // evita rate limit
+      await sleep(350);
     }
+
     setMeta.run("last_sync", String(Date.now()));
 
-    res.json({ ok: true, saved });
+    res.json({
+      ok: true,
+      fetched: matchIds.length,
+      saved
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 //ENDPOINT PARA LEER LAS PARTIDAS GUARDADAS EN LA DB
 app.get("/api/db/matches", (req, res) => {
   try {
@@ -305,13 +315,19 @@ app.get("/api/db/matches", (req, res) => {
   }
 });
 // ENDPOINT: campeones agregados (wins/losses, WR y KDA) últimos X días
+// TOP campeones basado en las ÚLTIMAS N partidas guardadas (no por días)
 app.get("/api/db/champions", (req, res) => {
   try {
-    const days = Number(req.query.days || 5);
-    const limit = Number(req.query.limit || 10);
-    const since = Date.now() - days * 24 * 60 * 60 * 1000;
+    const limit = Math.min(20, Math.max(1, Number(req.query.limit || 5)));
+    const last = Math.min(200, Math.max(1, Number(req.query.last || 50))); // por defecto 50
 
     const rows = db.prepare(`
+      WITH recent AS (
+        SELECT *
+        FROM matches
+        ORDER BY gameCreation DESC
+        LIMIT ?
+      )
       SELECT
         championName,
         COUNT(*) AS games,
@@ -319,18 +335,18 @@ app.get("/api/db/champions", (req, res) => {
         (COUNT(*) - SUM(win)) AS losses,
         ROUND( (SUM(kills) + SUM(assists)) * 1.0 / MAX(1, SUM(deaths)), 2) AS kda,
         ROUND( (SUM(win) * 100.0) / COUNT(*), 1) AS wr
-      FROM matches
-      WHERE gameCreation >= ?
+      FROM recent
       GROUP BY championName
       ORDER BY games DESC
       LIMIT ?
-    `).all(since, limit);
+    `).all(last, limit);
 
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 // Rank por PUUID (recomendado)
@@ -348,41 +364,28 @@ app.get('/api/rank/by-puuid/:puuid', async (req, res) => {
 // Partidas guardadas (paginadas)
 app.get("/api/db/matches/paged", (req, res) => {
   try {
-    const days = Number(req.query.days || 5);
     const page = Math.max(1, Number(req.query.page || 1));
-    const pageSize = Math.min(50, Math.max(5, Number(req.query.pageSize || 10)));
-
-    const since = Date.now() - days * 24 * 60 * 60 * 1000;
+    const pageSize = Math.min(50, Math.max(5, Number(req.query.pageSize || 5)));
     const offset = (page - 1) * pageSize;
 
-    const totalRow = db.prepare(`
-      SELECT COUNT(*) as total
-      FROM matches
-      WHERE gameCreation >= ?
-    `).get(since);
+    const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM matches`).get();
 
     const rows = db.prepare(`
       SELECT matchId, championName, kills, deaths, assists, win, gameCreation
       FROM matches
-      WHERE gameCreation >= ?
       ORDER BY gameCreation DESC
       LIMIT ? OFFSET ?
-    `).all(since, pageSize, offset);
+    `).all(pageSize, offset);
 
     const total = totalRow?.total || 0;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    res.json({
-      page,
-      pageSize,
-      total,
-      totalPages,
-      rows
-    });
+    res.json({ page, pageSize, total, totalPages, rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 app.get("/api/db/last-sync", (req, res) => {
   try {
     const row = getMeta.get("last_sync");
@@ -393,8 +396,63 @@ app.get("/api/db/last-sync", (req, res) => {
   }
 });
 
+// RESUMEN: media de los 5 campeones más jugados (sobre las 50 partidas guardadas)
+app.get("/api/db/top5-summary", (req, res) => {
+  try {
+    // Sacamos los 5 campeones con más partidas dentro de las 50 últimas guardadas
+    const top5 = db.prepare(`
+      WITH last50 AS (
+        SELECT *
+        FROM matches
+        ORDER BY gameCreation DESC
+        LIMIT 50
+      )
+      SELECT
+        championName,
+        COUNT(*) AS games,
+        SUM(win) AS wins,
+        (COUNT(*) - SUM(win)) AS losses,
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        SUM(assists) AS assists
+      FROM last50
+      GROUP BY championName
+      ORDER BY games DESC
+      LIMIT 5
+    `).all();
+
+    if (!top5.length) {
+      return res.json({ ok: true, totalGames: 0 });
+    }
+
+    // Totales combinados de esos 5 campeones
+    const totalGames = top5.reduce((acc, c) => acc + c.games, 0);
+    const totalWins  = top5.reduce((acc, c) => acc + c.wins, 0);
+    const totalLosses= top5.reduce((acc, c) => acc + c.losses, 0);
+    const totalKills = top5.reduce((acc, c) => acc + c.kills, 0);
+    const totalDeaths= top5.reduce((acc, c) => acc + c.deaths, 0);
+    const totalAssists=top5.reduce((acc, c) => acc + c.assists, 0);
+
+    const kda = (totalKills + totalAssists) / Math.max(1, totalDeaths);
+    const wr = totalGames ? (totalWins * 100) / totalGames : 0;
+
+    res.json({
+      ok: true,
+      totalGames,
+      wins: totalWins,
+      losses: totalLosses,
+      wr: Number(wr.toFixed(1)),
+      kda: Number(kda.toFixed(2)),
+      top5 // por si quieres mostrar nombres también
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`✅ Backend activo en http://localhost:${PORT}`);
 });
+
 
